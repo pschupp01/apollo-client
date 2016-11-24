@@ -946,6 +946,43 @@ describe('QueryManager', () => {
     );
   });
 
+ it('recover from failed query', () => {
+    const request = {
+      query: gql`
+        query fetchLuke {
+          people_one {
+            name
+          }
+        }`,
+      forceFetch: true,
+    };
+    const data1 = {
+      people_one: {
+        name: 'Luke Skywalker',
+      },
+    };
+
+    const queryManager = mockQueryManager({
+      request,
+      result: { errors: [new Error("Permission denied")]},
+    },{
+      request,
+      result: {data: data1},
+    });
+
+    const observable = queryManager.watchQuery(request);
+    return observableToPromise({
+      observable,
+     },
+      (result) => {
+        assert.deepEqual(result.data, data1);
+      }
+    ).catch(error =>  {
+      assert.include(error.message, "Permission denied");
+      observable.refetch();
+    });
+  });
+
   it('sets networkStatus to `poll` if a polling query is in flight', (done) => {
     const query = gql`
       {
